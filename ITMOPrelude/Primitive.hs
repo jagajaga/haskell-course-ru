@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module ITMOPrelude.Primitive where
 
-import Prelude (Show,Read)
+import           Prelude (Read, Show)
 
 ---------------------------------------------
 -- Синтаксис лямбда-выражений
@@ -86,9 +86,12 @@ natOne = Succ Zero -- 1
 
 -- Сравнивает два натуральных числа
 natCmp :: Nat -> Nat -> Tri
-natCmp = undefined
+natCmp Zero Zero = EQ
+natCmp Zero _ = LT
+natCmp _ Zero = GT
+natCmp (Succ a) (Succ b) = natCmp a b
 
--- n совпадает с m 
+-- n совпадает с m
 natEq :: Nat -> Nat -> Bool
 natEq Zero     Zero     = True
 natEq Zero     (Succ _) = False
@@ -111,7 +114,8 @@ Zero     +. m = m
 infixl 6 -.
 -- Вычитание для натуральных чисел
 (-.) :: Nat -> Nat -> Nat
-n -. m = undefined
+n -. Zero = n
+(Succ n) -. (Succ m) = n -. m
 
 infixl 7 *.
 -- Умножение для натуральных чисел
@@ -121,50 +125,72 @@ Zero     *. m = Zero
 
 -- Целое и остаток от деления n на m
 natDivMod :: Nat -> Nat -> Pair Nat Nat
-natDivMod n m = undefined
+natDivMod a b = case a `natLt` b of
+                     True -> Pair Zero a
+                     False -> Pair (Succ p) r where
+                        Pair p r = (a -. b) `natDivMod` b
+
 
 natDiv n = fst . natDivMod n -- Целое
 natMod n = snd . natDivMod n -- Остаток
 
 -- Поиск GCD алгоритмом Евклида (должен занимать 2 (вычислителельная часть) + 1 (тип) строчки)
 gcd :: Nat -> Nat -> Nat
-gcd = undefined
+gcd a Zero = a
+gcd a b = gcd b (a `natMod` b)
 
 -------------------------------------------
 -- Целые числа
 
 -- Требуется, чтобы представление каждого числа было единственным
-data Int = UNDEFINED deriving (Show,Read)
+data Int = Pos Nat | Neg Nat deriving (Show,Read)
 
-intZero   = undefined   -- 0
-intOne    = undefined     -- 1
-intNegOne = undefined -- -1
+intZero   = Pos natZero -- 0
+intOne    = Pos natOne -- 1
+intNegOne = Neg natZero-- -1
 
 -- n -> - n
 intNeg :: Int -> Int
-intNeg = undefined
+intNeg (Pos Zero) = Pos Zero
+intNeg (Pos (Succ a)) = Neg a
+intNeg (Neg a) = Pos (Succ a)
 
 -- Дальше также как для натуральных
 intCmp :: Int -> Int -> Tri
-intCmp = undefined
+intCmp (Neg _) (Pos _) = LT
+intCmp (Pos _) (Neg _) = GT
+intCmp (Pos (Succ a)) (Pos (Succ b)) = natCmp a b
+intCmp (Neg a) (Neg b) = natCmp b a
+
 
 intEq :: Int -> Int -> Bool
-intEq = undefined
+intEq a b = case intCmp a b of
+                 EQ -> True
+                 _ -> False
 
 intLt :: Int -> Int -> Bool
-intLt = undefined
+intLt a b = case intCmp a b of
+                 LT -> True
+                 _ -> False
 
 infixl 6 .+., .-.
 -- У меня это единственный страшный терм во всём файле
 (.+.) :: Int -> Int -> Int
-n .+. m = undefined
+(Pos a) .+. (Pos b) = Pos (a +. b)
+(Neg a) .+. (Neg b) = Neg (Succ (a +. b))
+(Pos Zero) .+. (Neg a) = Neg a
+(Pos (Succ a)) .+. (Neg (Succ b)) = Pos a .+. Neg b
+(Pos (Succ a)) .+. (Neg Zero) = Pos a
+n .+. m = m .+. n
 
 (.-.) :: Int -> Int -> Int
 n .-. m = n .+. (intNeg m)
 
 infixl 7 .*.
 (.*.) :: Int -> Int -> Int
-n .*. m = undefined
+(Pos a) .*. (Pos b) = Pos (a *. b)
+a .*. b@(Neg _) = intNeg (a .*. intNeg b)
+n .*. m = m .*. n
 
 -------------------------------------------
 -- Рациональные числа
@@ -176,32 +202,40 @@ ratNeg (Rat x y) = Rat (intNeg x) y
 
 -- У рациональных ещё есть обратные элементы
 ratInv :: Rat -> Rat
-ratInv = undefined
+ratInv (Rat (Pos x) y) = Rat (Pos y) x
+ratInv (Rat x@(Neg _) y) = ratNeg (Rat (intNeg x) y)
 
 -- Дальше как обычно
 ratCmp :: Rat -> Rat -> Tri
-ratCmp = undefined
+ratCmp (Rat a b) (Rat c d) = (a .*. Pos d) `intCmp` (c .*. Pos b)
 
 ratEq :: Rat -> Rat -> Bool
-ratEq = undefined
+ratEq n m = case n `ratCmp` m of
+    EQ -> True
+    _ -> False 
 
 ratLt :: Rat -> Rat -> Bool
-ratLt = undefined
+ratLt n m = case n `ratCmp` m of
+    LT -> True
+    _ -> False
 
 infixl 7 %+, %-
 (%+) :: Rat -> Rat -> Rat
-n %+ m = undefined
+(Rat a b) %+ (Rat c d) = Rat p q where 
+    p = (a .*. Pos d) .+. (Pos b .*. c) 
+    q = b *. d
 
 (%-) :: Rat -> Rat -> Rat
 n %- m = n %+ (ratNeg m)
 
 infixl 7 %*, %/
 (%*) :: Rat -> Rat -> Rat
-n %* m = undefined
+(Rat a b) %* (Rat c d) = Rat p q where 
+    p = a .*. c
+    q = b *. d
 
 (%/) :: Rat -> Rat -> Rat
 n %/ m = n %* (ratInv m)
-
 -------------------------------------------
 -- Операции над функциями.
 -- Определены здесь, но использовать можно и выше
