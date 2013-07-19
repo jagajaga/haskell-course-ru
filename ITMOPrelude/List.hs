@@ -20,35 +20,40 @@ data List a = Nil |  Cons a (List a) deriving (Show,Read)
 
 -- Длина списка
 length :: List a -> Nat
-length = undefined
+length Nil = Zero
+length (_ `Cons` xs) = Succ $ length xs
 
 -- Склеить два списка за O(length a)
 (++) :: List a -> List a -> List a
-a ++ b = undefined
+(x `Cons` xs) ++ ys = x `Cons` (xs ++ ys) 
 
 -- Список без первого элемента
 tail :: List a -> List a
-tail = undefined
+tail (_ `Cons` xs) = xs 
 
 -- Список без последнего элемента
 init :: List a -> List a
-init = undefined
+init (_ `Cons` Nil) = Nil 
+init (x `Cons` xs) = x `Cons` (init xs)
 
 -- Первый элемент
 head :: List a -> a
-head = undefined
+head (x `Cons` _) = x
 
 -- Последний элемент
 last :: List a -> a
-last = undefined
+last (x `Cons` Nil) = x
+last (_ `Cons` xs) = last xs
 
 -- n первых элементов списка
 take :: Nat -> List a -> List a
-take = undefined
+take Zero (x `Cons` _) = x `Cons` Nil
+take a (x `Cons` xs) = x `Cons` (take (a -. natOne) xs)
 
 -- Список без n первых элементов
 drop :: Nat -> List a -> List a
-drop = undefined
+drop Zero (_ `Cons` xs) = xs 
+drop a (_ `Cons` xs) = drop (a -. natOne) xs
 
 -- Оставить в списке только элементы удовлетворяющие p
 filter :: (a -> Bool) -> List a -> List a
